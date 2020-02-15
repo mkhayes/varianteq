@@ -17,9 +17,9 @@ autotests = false
 travis-ci = { repository = "joshleeb/varianteq", branch = "master" }
 
 [dependencies]
-proc-macro2 = "0.4.8"
-quote = "0.6.3"
-syn = "0.14.4"
+proc-macro2 = "1"
+quote = "1"
+syn = "1"
 
 [lib]
 proc-macro = true

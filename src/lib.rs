@@ -54,31 +54,35 @@
 //! error: #[derive(VariantEq)] is only defined for enums
 //! ```
 
-#![feature(proc_macro_diagnostic)]
+use syn::{parse2};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DeriveInput};
 
 extern crate proc_macro;
 
-use proc_macro::{Diagnostic, TokenStream};
-use syn::{parse2, DeriveInput};
-
-mod varianteq;
-
-type DeriveFn = fn(DeriveInput) -> Result<proc_macro2::TokenStream, Diagnostic>;
-
 #[proc_macro_derive(VariantEq)]
-pub fn varianteq_derive(tokens: TokenStream) -> TokenStream {
-    expand_derive(tokens, varianteq::derive)
+pub fn varianteq_derive(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse2(tokens.into()).unwrap();
+    proc_macro::TokenStream::from(derive(input))
 }
 
-fn expand_derive(tokens: TokenStream, derive: DeriveFn) -> TokenStream {
-    let item = parse2(tokens.into()).unwrap();
-    match derive(item) {
-        Ok(tokens) => tokens.into(),
-        Err(err) => handle_derive_err(err),
+
+fn derive(item: DeriveInput) -> proc_macro2::TokenStream {
+    match item.data {
+        Data::Enum(_) => (),
+        _ => unimplemented!("#[derive(VariantEq)] is only defined for enums"),
+    };
+
+    let ident = item.ident;
+    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
+
+    quote! {
+        impl #impl_generics PartialEq for #ident #ty_generics #where_clause {
+            fn eq(&self, other: &#ident#ty_generics) -> bool {
+                ::std::mem::discriminant(self) == ::std::mem::discriminant(other)
+            }
+        }
+        impl #impl_generics Eq for #ident #ty_generics #where_clause {}
     }
-}
-
-fn handle_derive_err(err: Diagnostic) -> TokenStream {
-    err.emit();
-    "".parse().unwrap()
 }
